@@ -22,7 +22,7 @@ class Task{
       assignedTo: json['assigned_to'],
       dueDate: DateTime.parse(json['due_date']),
       description: json['description'],
-      estimateHours: json['estimate_hours'],
+      estimateHours: (json['estimate_hours'] as num).toDouble(),
       createdAt: DateTime.parse(json['created_at'])
     );
   }
