@@ -26,57 +26,80 @@ class _InboxListViewState extends State<InboxListView> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<InboxViewmodel>();
+    final vm = Provider.of<InboxViewmodel>(context);
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
-    if (vm.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    final searchBar = CupertinoSearchTextField(
+      controller: _searchController,
+      placeholder: 'Search',
+    );
+
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        leading: const Text('Inbox'),
+        trailing: isLandscape ? SizedBox(width: 200, child: searchBar) : null,
+      ),
+      child: SafeArea(
+        child: vm.isLoading
+            ? const Center(child: CupertinoActivityIndicator())
+            : (isLandscape && vm.selectedMessage != null)
+            ? Row(
+                children: [
+                  Flexible(flex: 1, child: _buildMessageList(context, vm)),
+                  const VerticalDivider(
+                    width: 1,
+                    color: CupertinoColors.systemGrey4,
+                  ),
+                  Flexible(
+                    flex: 1,
+                    child: vm.selectedMessage == null
+                        ? const Center(child: Text("Select a message"))
+                        : MessageDetailView(message: vm.selectedMessage),
+                  ),
+                ],
+              )
+            : Column(
+                children: [
+                  if (!isLandscape)
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: searchBar,
+                    ),
+                  Expanded(child: _buildMessageList(context, vm)),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildMessageList(BuildContext context, InboxViewmodel vm) {
+    // combine all message types into a single list
+    final items = vm.allMessages;
+
+    if (items.isEmpty) {
+      return const Center(child: Text("No messages found"));
     }
 
-    final allMessages = [...vm.memos, ...vm.events, ...vm.tasks];
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Inbox'), centerTitle: false),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: CupertinoSearchTextField(
-              controller: _searchController,
-              placeholder: 'Search messages...',
-              onChanged: (value) {
-                // not implementing actual search yet
-                print('User typed: $value');
-              },
-            ),
-          ),
-          Expanded(
-            child: ListView.separated(
-              itemCount: allMessages.length,
-              itemBuilder: (context, index) {
-                final item = allMessages[index];
-                return MessagePreviewTile(
-                  item: item,
-                  onTap: () {
-                    print("Clicked $item");
-                    // vm.selectMessage(item);
-                    // Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute(
-                    //     builder: (_) => const MessageDetailView(),
-                    //   ),
-                    // );
-                  },
-                );
-              },
-              separatorBuilder: (context, index) => const Divider(
-                color: Colors.black, // solid black line
-                thickness: 1.0, // line thickness
-                height: 0, // no extra spacing
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ListView.builder(
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return MessagePreviewTile(
+          item: item,
+          onTap: () {
+            vm.selectMessage(item);
+            if (MediaQuery.of(context).orientation == Orientation.portrait) {
+              Navigator.push(
+                context,
+                CupertinoPageRoute(
+                  builder: (_) => MessageDetailView(message: item),
+                ),
+              );
+            }
+          },
+        );
+      },
     );
   }
 }
